@@ -18,32 +18,28 @@ $na07 = Connect-NaController $ntap07 -Credential $cred -https
 $na30 = Connect-NaController $ntap30 -Credential $cred -https
 $na50 = Connect-NaController $ntap50 -Credential $cred -https
 
-New-NaVol -Controller $na07 -Name vol1 -Aggregate aggr9g -Size 1g
-New-NaVol -Controller $na07 -Name vol2 -Aggregate aggr9g -Size 1g
-New-NaVol -Controller $na07 -Name vol3 -Aggregate aggr9g -Size 1g
-New-NaVol -Controller $na07 -Name vol4 -Aggregate aggr9g -Size 1g
+Write-Host "====================================================="
+Write-Host "Release SnapMirror Relationships on USOXF-NA07"
+Write-Host "====================================================="
+Invoke-NaSnapmirrorRelease -Source ($ntap07 + ":" + "vol5") -Destination ($ntap30 + ":" + "vol5_Mirror1") -Controller $na07 -Confirm:$false
+Invoke-NaSnapmirrorRelease -Source ($ntap07 + ":" + "vol6") -Destination ($ntap30 + ":" + "vol6_Mirror1") -Controller $na07 -Confirm:$false
 
-New-NaVol -Controller $na30 -Name vol1_Mirror1 -Aggregate aggr9g -Size 1g 
-New-NaVol -Controller $na30 -Name vol2_Mirror1 -Aggregate aggr9g -Size 1g 
-New-NaVol -Controller $na30 -Name vol3_Mirror1 -Aggregate aggr9g -Size 1g 
-New-NaVol -Controller $na30 -Name vol4_Mirror1 -Aggregate aggr9g -Size 1g 
+Write-Host ""
+Write-Host "====================================================="
+Write-Host "Remove SnapMirror Schedules on USEDN-NA30"
+Write-Host "====================================================="
+Remove-NaSnapMirrorSchedule -Controller $na30 -Destination ($ntap30 + ":" + "vol5_Mirror1") #| Remove-NaSnapMirrorSchedule
+Remove-NaSnapMirrorSchedule -Controller $na30 -Destination ($ntap30 + ":" + "vol6_Mirror1") #| Remove-NaSnapMirrorSchedule
 
-Set-NaVol -Controller $na30 -Name vol1_Mirror1 -Restricted
-Set-NaVol -Controller $na30 -Name vol2_Mirror1 -Restricted
-Set-NaVol -Controller $na30 -Name vol3_Mirror1 -Restricted
-Set-NaVol -Controller $na30 -Name vol4_Mirror1 -Restricted
+Write-Host ""
+Write-Host "====================================================="
+Write-Host "Remove volumes on USOXF-NA07 and USEDN-NA30"
+Write-Host "====================================================="
+get-navol -controller $na07
+Get-NaVol -Name vol5 -Controller $na07 | Set-NaVol -Offline -Name $_.Name
+Get-NaVol -Name vol6 -Controller $na07 | Set-NaVol -Offline -Name $_.Name
+get-navol -controller $na30
+Get-NaVol -Name vol5_Mirror1 -Controller $na30 | Set-NaVol -Offline | Remove-NaVol
+Get-NaVol -Name vol6_Mirror1 -Controller $na30 | Set-NaVol -Offline | Remove-NaVol
 
-$src1 = $ntap07 + ":" + "vol1"
-$src2 = $ntap07 + ":" + "vol2"
-$src3 = $ntap07 + ":" + "vol3"
-$src4 = $ntap07 + ":" + "vol4"
-$dst1 = $ntap30 + ":" + "vol1_Mirror1"
-$dst2 = $ntap30 + ":" + "vol2_Mirror1"
-$dst3 = $ntap30 + ":" + "vol3_Mirror1"
-$dst4 = $ntap30 + ":" + "vol4_Mirror1"
-
-Invoke-NaSnapmirrorInitialize -Source $src1 -Destination $dst1 -Controller $na30
-Invoke-NaSnapmirrorInitialize -Source $src2 -Destination $dst2 -Controller $na30
-Invoke-NaSnapmirrorInitialize -Source $src3 -Destination $dst3 -Controller $na30
-Invoke-NaSnapmirrorInitialize -Source $src4 -Destination $dst4 -Controller $na30
 
