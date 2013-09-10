@@ -62,22 +62,16 @@ $na07_aggr = "aggr9g"
 
 
 ### Get volumes from na07 except for clones and vol0
-$na07_vols = Get-NaVol -Controller $na07 | ? {$_.CloneParent -eq $null} | ? {$_.Name -ne "vol0"} | foreach-object ($vol = $_.Name)
+$na07_vols = Get-NaVol -Controller $na07 | ? {$_.CloneParent -eq $null} | ? {$_.Name -ne "vol0"} 
 
-### Test
-foreach ($vol in $na01_vols)
+### Get volume properties for each volume
+foreach ($vol in $na07_vols) {
 
-### Get vol size
-$size = Get-NaVol -Controller $na07 | ? {$_.CloneParent -eq $null} | ? {$_.Name -ne "vol0"} | foreach-object {Get-NavolSize  $_.Name -controller $na07 }
+    $size = Get-NaVolSize -Controller $na07 -Name $vol.Name
+    $guarantee = ((Get-NaVolOption -controller $na07 -Name $vol.Name) | ? { $_.Name -eq "actual_guarantee" }).Value
+    $fracres_percent = ((Get-NaVolOption -Controller $na07 -Name $vol.Name) | ? { $_.Name -eq "fractional_reserve" }).Value
+    $snapres_percent = (Get-NaSnapshotReserve -Controller $na07 -TargetName $vol.Name).Percentage
 
-### Get vol fractional reserve
-$fracres_percent = Get-NaVol -Controller $na07 | ? {$_.CloneParent -eq $null} | ? {$_.Name -ne "vol0"} | foreach-object {Get-NavolOption $_.Name} | ? {$_.Name -eq "fractional_reserve"} | select-object -Property Value
 
-### Get vol guarantee
-$guarantee = Get-NaVol -Controller $na07 | ? {$_.CloneParent -eq $null} | ? {$_.Name -ne "vol0"} | foreach-object {Get-NavolOption $_.Name} | ? {$_.Name -eq "actual_guarantee"} | select-object -Property Value
-
-### Get Snapshot Reserve
-$snapres_percentage = Get-NaVol -Controller $na07 | ? {$_.CloneParent -eq $null} | ? {$_.Name -ne "vol0"} | foreach-object {Get-NaSnapshotReserve $_.Name} | select-object -Property Percentage
-
-### Create vols on new destination controller
-New-Navol -Controller $na50 -Name $vol -Aggregate $na07_aggr -size $size -SpaceReserve $guarantee -WhatIf
+### Create the new volume and set guarantees appropriately on na50
+    New-NaVol -Controller $na50 -Name $vol.Name -Aggregate $na07_aggr -size $size.VolumeSize -SpaceReserve $guarantee -WhatIf }
