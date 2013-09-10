@@ -56,3 +56,20 @@ $na50 = Connect-NaController $ntap50 -Credential $cred -https
 get-navol -controller $na07
 get-navol -controller $na30
 get-navol -controller $na50
+
+### Get volumes from na07 except for clones and vol0
+$na07_vols = Get-NaVol -Controller $na07 | ? {$_.CloneParent -eq $null} | ? {$_.Name -ne "vol0"}
+
+### Get vol size
+$size = Get-NaVol -Controller $na07 | ? {$_.CloneParent -eq $null} | ? {$_.Name -ne "vol0"} | foreach-object {Get-NavolSize  $_.Name -controller $na07 }
+
+### Get vol fractional reserve
+$fracres_percent = Get-NaVol -Controller $na07 | ? {$_.CloneParent -eq $null} | ? {$_.Name -ne "vol0"} | foreach-object {Get-NavolOption $_.Name} | ? {$_.Name -eq "fractional_reserve"} | select-object -Property Value
+
+### Get vol guarantee
+$guarantee = Get-NaVol -Controller $na07 | ? {$_.CloneParent -eq $null} | ? {$_.Name -ne "vol0"} | foreach-object {Get-NavolOption $_.Name} | ? {$_.Name -eq "actual_guarantee"} | select-object -Property Value
+
+### Get Snapshot Reserve
+$guarantee = Get-NaVol -Controller $na07 | ? {$_.CloneParent -eq $null} | ? {$_.Name -ne "vol0"} | foreach-object {Get-NaSnapshotReserve $_.Name} | select-object -Property Percentage
+
+### Create vols on new destination controller
