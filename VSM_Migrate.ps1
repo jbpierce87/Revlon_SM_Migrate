@@ -57,8 +57,15 @@ get-navol -controller $na07
 get-navol -controller $na30
 get-navol -controller $na50
 
+### Set aggregate variable where new volumes are going to be created
+$na07_aggr = "aggr9g"
+
+
 ### Get volumes from na07 except for clones and vol0
-$na07_vols = Get-NaVol -Controller $na07 | ? {$_.CloneParent -eq $null} | ? {$_.Name -ne "vol0"}
+$na07_vols = Get-NaVol -Controller $na07 | ? {$_.CloneParent -eq $null} | ? {$_.Name -ne "vol0"} | foreach-object ($vol = $_.Name)
+
+### Test
+foreach ($vol in $na01_vols)
 
 ### Get vol size
 $size = Get-NaVol -Controller $na07 | ? {$_.CloneParent -eq $null} | ? {$_.Name -ne "vol0"} | foreach-object {Get-NavolSize  $_.Name -controller $na07 }
@@ -70,6 +77,7 @@ $fracres_percent = Get-NaVol -Controller $na07 | ? {$_.CloneParent -eq $null} | 
 $guarantee = Get-NaVol -Controller $na07 | ? {$_.CloneParent -eq $null} | ? {$_.Name -ne "vol0"} | foreach-object {Get-NavolOption $_.Name} | ? {$_.Name -eq "actual_guarantee"} | select-object -Property Value
 
 ### Get Snapshot Reserve
-$guarantee = Get-NaVol -Controller $na07 | ? {$_.CloneParent -eq $null} | ? {$_.Name -ne "vol0"} | foreach-object {Get-NaSnapshotReserve $_.Name} | select-object -Property Percentage
+$snapres_percentage = Get-NaVol -Controller $na07 | ? {$_.CloneParent -eq $null} | ? {$_.Name -ne "vol0"} | foreach-object {Get-NaSnapshotReserve $_.Name} | select-object -Property Percentage
 
 ### Create vols on new destination controller
+New-Navol -Controller $na50 -Name $vol -Aggregate $na07_aggr -size $size -SpaceReserve $guarantee -WhatIf
