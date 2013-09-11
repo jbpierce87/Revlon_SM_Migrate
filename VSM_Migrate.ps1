@@ -74,4 +74,22 @@ foreach ($vol in $na07_vols) {
 
 
 ### Create the new volume and set guarantees appropriately on na50
-    New-NaVol -Controller $na50 -Name $vol.Name -Aggregate $na07_aggr -size $size.VolumeSize -SpaceReserve $guarantee -WhatIf }
+    New-NaVol -Controller $na50 -Name $vol.Name -Aggregate $na07_aggr -size $size.VolumeSize -SpaceReserve $guarantee }
+
+### Get Snapmirror schedules from na30 and assign variables
+$snapschedna30 = Get-NaSnapmirrorSchedule -Controller $na30
+$snapdestna50 = get-navol -$na50 | foreach-object { 
+    $_.Name 
+    $destna50 = "usoxf-na07:/vol/" }
+
+foreach ($snapsource in $snapschedna30) {
+
+    $snapsourcena30 = ($snapschedna30 | select-object Destination).Value
+    $snaprate = ($snapschedna30 | select-object MaxRate).Value
+    $snapminutes = ($snapschedna30 | select-object Minutes).Value
+    $snaphours = ($snapschedna30 | select-object Hours).Value
+    $snapdaysofweek = ($snapschedna30 | select-object DaysOfWeek).Value
+
+### Create the new volume and set guarantees appropriately on na50
+    set-nasnapmirrorschedule -source $snapsourcena30 -Destination $destna50 -Minutes $snapminutes -Hours $snaphours -DaysOfWeek $snapdaysofweek -WhatIf }
+
