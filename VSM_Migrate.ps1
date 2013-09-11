@@ -78,6 +78,24 @@ foreach ($vol in $na07_vols) {
 
 ### Get Snapmirror schedules from na30 and assign variables
 $snapschedna30 = Get-NaSnapmirrorSchedule -Controller $na30
+
+$snapdestna50 = get-navol -Controller $na50 | ? {$_.CloneParent -eq $null} | ? {$_.Name -ne "vol0"} | foreach-object { 
+    $_.Name 
+    $destna50 = "usoxf-na07:/vol/" + $_.Name } 
+
+foreach ($snapsource in $snapschedna30) {
+
+    $snapsourcena30 = $snapschedna30 | select-object Destination | out-string
+    $snaprate = ($snapschedna30 | select-object MaxRate).Value | out-string
+    $snapminutes = $snapschedna30 | select-object Minutes | out-string
+    $snaphours = $snapschedna30 | select-object Hours | out-string
+    # $snapdaysofweek = $snapschedna30 | select-object DaysOfWeek | out-string
+
+### Having trouble with daysofmonth converting to string for input as variable ******
+    $snapdaysofmonth = "*"
+
+### Create the new volume and set guarantees appropriately on na50
+    set-nasnapmirrorschedule -source $snapsourcena30 -Destination $destna50 -Minutes $snapminutes -Hours $snaphours -DaysOfWeek $snapdaysofweek -DaysOfMonth *  }
 $snapdestna50 = get-navol -$na50 | foreach-object { 
     $_.Name 
     $destna50 = "usoxf-na07:/vol/" }
@@ -92,4 +110,5 @@ foreach ($snapsource in $snapschedna30) {
 
 ### Create the new volume and set guarantees appropriately on na50
     set-nasnapmirrorschedule -source $snapsourcena30 -Destination $destna50 -Minutes $snapminutes -Hours $snaphours -DaysOfWeek $snapdaysofweek -WhatIf }
+
 
