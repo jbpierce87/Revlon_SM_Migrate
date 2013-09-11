@@ -38,7 +38,12 @@ Write-Host "====================================================="
 New-NaVol -Controller $na30 -Name vol5_Mirror1 -Aggregate aggr9g -Size 1g 
 New-NaVol -Controller $na30 -Name vol6_Mirror1 -Aggregate aggr9g -Size 1g 
 
-Write-Host ""
+#Write-Host "====================================================="
+#Write-Host "Create src qtrees on USOXF-NA07"
+#Write-Host "====================================================="
+#New-NaQtree -Controller $na07 -Path /vol/vol3/qtree3
+#New-NaQtree -Controller $na07 -Path /vol/vol4/qtree4
+
 Write-Host "====================================================="
 Write-Host "Set dest vols on USEDN-NA30 to restricted state"
 Write-Host "====================================================="
@@ -51,18 +56,17 @@ Set-NaVol -Controller $na30 -Name vol6_Mirror1 -Restricted
 
 $src1 = $ntap07 + ":" + "vol1"
 $src2 = $ntap07 + ":" + "vol2"
-$src3 = $ntap07 + ":" + "vol3"
-$src4 = $ntap07 + ":" + "vol4"
+$src3 = $ntap07 + ":" + "/vol/vol3/qtree3"
+$src4 = $ntap07 + ":" + "/vol/vol4/qtree4"
 $src5 = $ntap07 + ":" + "vol5"
 $src6 = $ntap07 + ":" + "vol6"
 $dst1 = $ntap30 + ":" + "vol1_Mirror1"
 $dst2 = $ntap30 + ":" + "vol2_Mirror1"
-$dst3 = $ntap30 + ":" + "vol3_Mirror1"
-$dst4 = $ntap30 + ":" + "vol4_Mirror1"
+$dst3 = $ntap30 + ":" + "/vol/vol3_Mirror1/qtree3"
+$dst4 = $ntap30 + ":" + "/vol/vol4_Mirror1/qtree4"
 $dst5 = $ntap30 + ":" + "vol5_Mirror1"
 $dst6 = $ntap30 + ":" + "vol6_Mirror1"
 
-Write-Host ""
 Write-Host "====================================================="
 Write-Host "Initialize Mirrors"
 Write-Host "====================================================="
@@ -73,9 +77,12 @@ Write-Host "====================================================="
 Invoke-NaSnapmirrorInitialize -Source $src5 -Destination $dst5 -Controller $na30
 Invoke-NaSnapmirrorInitialize -Source $src6 -Destination $dst6 -Controller $na30
 
-Write-Host ""
 Write-Host "====================================================="
 Write-Host "Setup Snapmirror Schedules"
 Write-Host "====================================================="
-Set-NaSnapmirrorSchedule -Source $src5 -Destination $dst5 -Minutes 5 -Hours 1-24/2 -DaysOfMonth * -DaysOfWeek * -Controller $na30
-Set-NaSnapmirrorSchedule -Source $src6 -Destination $dst6 -Minutes 5 -Hours 1-24/2 -DaysOfMonth * -DaysOfWeek * -Controller $na30
+#Set-NaSnapmirrorSchedule -Source $src1 -Destination $dst1 -Minutes 5 -Hours 1-24/2 -DaysOfMonth * -DaysOfWeek * -Controller $na30
+#Set-NaSnapmirrorSchedule -Source $src2 -Destination $dst2 -Minutes 10 -Hours 1-24/2 -DaysOfMonth * -DaysOfWeek * -Controller $na30
+#Set-NaSnapmirrorSchedule -Source $src3 -Destination $dst3 -Minutes 15 -Hours 1-24/2 -DaysOfMonth * -DaysOfWeek * -Controller $na30
+#Set-NaSnapmirrorSchedule -Source $src4 -Destination $dst4 -Minutes 20 -Hours 1-24/2 -DaysOfMonth * -DaysOfWeek * -Controller $na30
+Set-NaSnapmirrorSchedule -Source $src5 -Destination $dst5 -Minutes 25 -Hours 1-24/2 -DaysOfMonth * -DaysOfWeek * -Controller $na30
+Set-NaSnapmirrorSchedule -Source $src6 -Destination $dst6 -Minutes 30 -Hours 1-24/2 -DaysOfMonth * -DaysOfWeek * -Controller $na30
