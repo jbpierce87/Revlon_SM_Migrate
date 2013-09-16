@@ -29,12 +29,11 @@
 param (
     [string]$csvfile = $(throw "-csv filename.csv is required"),
     [string]$logfile = $(throw "-log logname.txt is required"),
+    [ValidateSet("seed","update","cutover")][string]$mode = "none",
     [bool]$cleanup = $true
 )
-import-module DataONTAP
 
-function checkparams() {
-}
+import-module DataONTAP
 
 ### Controller Login Variables
 $ntap07 = "usoxf-na07"
@@ -48,30 +47,53 @@ $ntappw = "AcmeL4b#"
 $pw = convertto-securestring $ntappw -asplaintext -force
 $cred = new-object -typename system.management.automation.pscredential -argumentlist $ntapuser,$pw
 
-### Connect to the controllers
-#$na07 = Connect-NaController $ntap07 -Credential $cred -https
-#$na30 = Connect-NaController $ntap30 -Credential $cred -https
-#$na50 = Connect-NaController $ntap50 -Credential $cred -https
+### Connect to the source controllers
 
-#$sourcefile = resolve-path $csvfile
 $csvobjects = Import-Csv -Path (resolve-path $csvfile).Path
 
-#$sources = @()
-$sources += ($csvobjects | foreach-object {$_.SRC}) | select -uniq
-foreach ($src in $sources) {
-    "src: " + $src
-    $dynvars += New-Variable -Name "var$src" -Value $src
-}
-write-host "=========== dynvars ============"
-$dynvars
-#$na30 = Connect-NaController $ntap30 -Credential $cred -https
-#$na50 = Connect-NaController $ntap50 -Credential $cred -https
-$csvobjects | foreach-object {
-#    $_.SRC
-#    $_.SRCVOL
-#    $_.ODST
-#    $_.ODSTVOL
-#    $_.NDST
-#    $_.NDSTVOL
-#    $_.NDSTAGGR
+#$sources += ($csvobjects | foreach-object {$_.SRC}) | select -uniq
+#for ($i = 0; $i -le $sources.Length; $i++) {
+#    New-Variable -Name "srcStr$i" -Value $sources[$i]
+#    New-Variable -Name "srcNodeObj$i" -Value $sources[$i]
+#}
+
+### Connect to our source, old destination, and new desitnation controllers
+$src_node = Connect-NaController $csvobjects[0].SRCNODE -Credential $cred -https
+$dstold_Node = Connect-NaController $csvobjects[0].ODSTNODE -Credential $cred -https
+$dstnew_Node = Connect-NaController $csvobjects[0].NDSTNODE -Credential $cred -https
+
+# $_.SRCNODE $_.SRCPATH $_.ODSTNODE $_.ODSTPATH $_.NDSTNODE $_.NDSTPATH $_.NDSTAGGR
+switch ($mode) {
+    "seed" {
+        $csvobjects | foreach-object {
+            if ($_.SRCPATH -notmatch "^/vol/") {
+                # VSM relationship
+                write-host "Working with a VSM source"
+                $src = Get-Navol $_.ODSTPATH -Controller $dstold_node
+                if ($src.State -eq "online") {
+                    $size = Get-NaVolSize -Controller $dstold_node -Name $_.ODSTPATH
+                    $guarantee = ((Get-NaVolOption -Controller $dstold_node -Name $src.Name) | ? { $_.Name -eq "actual_guarantee" }).Value
+                    write-host ("creating new dst volume " + $_.NDSTPATH)
+                } 
+            } elseif ($_.SRCPATH -match "^/vol/") {
+                # QSM relationship
+                write-host "Working with a QSM source"
+            }
+        }
+    }
+
+    "update" {
+        $csvobjects | foreach-object {
+        }
+    }
+
+    "cutover" {
+        $csvobjects | foreach-object {
+        }
+    }
+
+    "none" {
+        Write-Host "Help is required"
+        break
+    }
 }
