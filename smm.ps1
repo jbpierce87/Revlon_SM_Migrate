@@ -35,6 +35,9 @@ param (
 
 import-module DataONTAP
 
+$TranscriptFile = $logfile 
+start-transcript $TranscriptFile -noclobber
+
 ### Controller Login Variables
 $ntap07 = "usoxf-na07"
 $ntap30 = "usedn-na30"
@@ -69,11 +72,12 @@ switch ($mode) {
             if ($_.SRCPATH -notmatch "^/vol/") {
                 # VSM relationship
                 write-host "Working with a VSM source"
-                $src = Get-Navol $_.ODSTPATH -Controller $dstold_node
+                $src = Get-Navol -Controller $dstold_node -Name $_.ODSTPATH
                 if ($src.State -eq "online") {
                     $size = Get-NaVolSize -Controller $dstold_node -Name $_.ODSTPATH
                     $guarantee = ((Get-NaVolOption -Controller $dstold_node -Name $src.Name) | ? { $_.Name -eq "actual_guarantee" }).Value
-                    write-host ("creating new dst volume " + $_.NDSTPATH)
+                    New-NaVol -Controller $dstnew_Node -Name $_.NDSTPATH -Aggregate $_.NDSTAGGR -size $size.VolumeSize -SpaceReserve $guarantee
+                    Set-NaVol -Controller $dstnew_Node -Name $_.NDSTPATH -State Restricted
                 } 
             } elseif ($_.SRCPATH -match "^/vol/") {
                 # QSM relationship
@@ -97,3 +101,5 @@ switch ($mode) {
         break
     }
 }
+
+stop-transcript
