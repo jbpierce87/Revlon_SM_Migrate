@@ -9,8 +9,15 @@ $pw = convertto-securestring $ntappw -asplaintext -force
 $cred = new-object -typename system.management.automation.pscredential -argumentlist $ntapuser,$pw
 
 ### Connect to the controllers 
+$na07 = Connect-NaController usedn-na07 -Credential $cred -https
 $na30 = Connect-NaController usedn-na30 -Credential $cred -https
 $na50 = Connect-NaController usedn-na50 -Credential $cred -https
+
+Write-Host "====================================================="
+Write-Host "Release SnapMirror Relationships on USOXF-NA07"
+Write-Host "====================================================="
+Invoke-NaSnapmirrorRelease -Source ($na07.Name + ":" + "vol5") -Destination ($na50.Name + ":" + "vol5_Mirror1") -Controller $na07 -Confirm:$false
+Invoke-NaSnapmirrorRelease -Source ($na07.Name + ":" + "vol6") -Destination ($na50.Name + ":" + "vol6_Mirror1") -Controller $na07 -Confirm:$false
 
 Write-Host "====================================================="
 Write-Host "Release SnapMirror Relationships on USOXF-NA30"
