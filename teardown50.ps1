@@ -1,5 +1,12 @@
 import-module DataONTAP
 
+function msg($message) {
+    Write-Host ""
+    Write-Host "====================================================="
+    Write-Host "$message"
+    Write-Host "====================================================="
+}
+
 ### Controller Login Variables
 $ntapuser = "root"
 $ntappw = "AcmeL4b#"
@@ -13,27 +20,19 @@ $na07 = Connect-NaController usedn-na07 -Credential $cred -https
 $na30 = Connect-NaController usedn-na30 -Credential $cred -https
 $na50 = Connect-NaController usedn-na50 -Credential $cred -https
 
-Write-Host "====================================================="
-Write-Host "Release SnapMirror Relationships on USOXF-NA07"
-Write-Host "====================================================="
+msg "Release SnapMirror Relationships on USOXF-NA07"
 Invoke-NaSnapmirrorRelease -Source ($na07.Name + ":" + "vol5") -Destination ($na50.Name + ":" + "vol5_Mirror1") -Controller $na07 -Confirm:$false
 Invoke-NaSnapmirrorRelease -Source ($na07.Name + ":" + "vol6") -Destination ($na50.Name + ":" + "vol6_Mirror1") -Controller $na07 -Confirm:$false
 
-Write-Host "====================================================="
-Write-Host "Release SnapMirror Relationships on USOXF-NA30"
-Write-Host "====================================================="
+msg "Release SnapMirror Relationships on USOXF-NA30"
 Invoke-NaSnapmirrorRelease -Source ($na30.Name + ":" + "vol5_Mirror1") -Destination ($na50.Name + ":" + "vol5_Mirror1") -Controller $na30 -Confirm:$false
 Invoke-NaSnapmirrorRelease -Source ($na30.Name + ":" + "vol6_Mirror1") -Destination ($na50.Name + ":" + "vol6_Mirror1") -Controller $na30 -Confirm:$false
 
-Write-Host "====================================================="
-Write-Host "Remove SnapMirror Schedules on USEDN-NA50"
-Write-Host "====================================================="
+msg "Remove SnapMirror Schedules on USEDN-NA50"
 Remove-NaSnapMirrorSchedule -Controller $na50 -Destination ($na50.Name + ":" + "vol5_Mirror1")
 Remove-NaSnapMirrorSchedule -Controller $na50 -Destination ($na50.Name + ":" + "vol6_Mirror1")
 
-Write-Host "====================================================="
-Write-Host "Remove volumes on USEDN-NA50"
-Write-Host "====================================================="
+msg "Remove volumes on USEDN-NA50"
 Set-Navol vol5_Mirror1 -Offline -Controller $na50 | Remove-NaVol -Controller $na50 -Confirm:$false
 Set-Navol vol6_Mirror1 -Offline -Controller $na50 | Remove-NaVol -Controller $na50 -Confirm:$false
 
