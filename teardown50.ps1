@@ -1,5 +1,6 @@
 import-module DataONTAP
 
+### Functions
 function msg($message) {
     Write-Host ""
     Write-Host "====================================================="

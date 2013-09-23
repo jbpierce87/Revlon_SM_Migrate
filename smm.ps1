@@ -33,9 +33,9 @@ param (
     [bool]$cleanup = $true
 )
 
-import-module DataONTAP
+Import-Module DataONTAP
 
-function msg($message) {
+Function header($message) {
     Write-Host ""
     Write-Host "====================================================="
     Write-Host "$message"
@@ -43,7 +43,7 @@ function msg($message) {
 }
 
 $TranscriptFile = $logfile 
-start-transcript $TranscriptFile -noclobber
+Start-Transcript $TranscriptFile -noclobber
 
 ### Controller Login Variables
 $ntap07 = "usoxf-na07"
@@ -77,14 +77,14 @@ switch ($mode) {
         $csvobjects | foreach-object {
             if ($_.SRCPATH -notmatch "^/vol/") {
                 # VSM relationship
-                msg ("Seeding VSM source: " + $_.ODSTNODE + ":" + $_.ODSTPATH)
+                header ("Seeding VSM source: " + $_.ODSTNODE + ":" + $_.ODSTPATH)
                 $src = Get-Navol -Controller $dstold_node -Name $_.ODSTPATH
                 if ($src.State -eq "online") {
                     $size = Get-NaVolSize -Controller $dstold_node -Name $_.ODSTPATH
                     $guarantee = ((Get-NaVolOption -Controller $dstold_node -Name $src.Name) | ? { $_.Name -eq "actual_guarantee" }).Value
-                    msg ("create vol: " + $_.NDSTPATH)
+                    Write-Host ("create vol: " + $_.NDSTPATH)
                     New-NaVol -Controller $dstnew_Node -Name $_.NDSTPATH -Aggregate $_.NDSTAGGR -size $size.VolumeSize -SpaceReserve $guarantee
-                    msg ("restrict vol: " + $_.NDSTPATH)
+                    Write-Host ("restrict vol: " + $_.NDSTPATH)
                     Set-NaVol -Controller $dstnew_Node -Name $_.NDSTPATH -Restricted
                     $tsrc = $dstold_Node.Name + ":" + $_.NDSTPATH 
                     $tdst = $dstnew_Node.Name + ":" + $_.NDSTPATH 
@@ -92,7 +92,7 @@ switch ($mode) {
                 } 
             } elseif ($_.SRCPATH -match "^/vol/") {
                 # QSM relationship
-                msg ("Seeding QSM source: " + $_.ODSTNODE + ":" + $_.ODSTPATH)
+                header ("Seeding QSM source: " + $_.ODSTNODE + ":" + $_.ODSTPATH)
             }
         }
     }
@@ -101,10 +101,10 @@ switch ($mode) {
         $csvobjects | foreach-object {
             if ($_.SRCPATH -notmatch "^/vol/") {
                 # VSM relationship
-                msg ("Updating VSM source: " + $_.ODSTNODE + ":" + $_.ODSTPATH + " to: " + $_.NDSTNODE + ":" + $_.NDSTPATH)
+                header ("Updating VSM source: " + $_.ODSTNODE + ":" + $_.ODSTPATH + " to: " + $_.NDSTNODE + ":" + $_.NDSTPATH)
                 $mirrored = Test-NaSnapmirrorVolume -Controller $dstold_node -Volume $_.ODSTPATH 
                 if ( ($mirrored.IsDestination) -and (!($mirrored.IsTransferBroken)) ) {
-                    msg ("update na30: " + $_.ODSTPATH + "To na50: " + $_.NDSTPATH)
+                    Write-Host ("update na30: " + $_.ODSTPATH + "To na50: " + $_.NDSTPATH)
                     $tsrc = $dstold_Node.Name + ":" + $_.NDSTPATH 
                     $tdst = $dstnew_Node.Name + ":" + $_.NDSTPATH 
                     Invoke-NaSnapmirrorUpdate -Source $tsrc -Destination $tdst -Controller $dstnew_Node
@@ -112,7 +112,7 @@ switch ($mode) {
 
             } elseif ($_.SRCPATH -match "^/vol/") {
                 # QSM relationship
-                msg ("Working with QSM source: " + $_.ODSTNODE + ":" + $_.ODSTPATH)
+                header ("Working with QSM source: " + $_.ODSTNODE + ":" + $_.ODSTPATH)
             }
         }
     }
@@ -121,13 +121,46 @@ switch ($mode) {
         $csvobjects | foreach-object {
             if ($_.SRCPATH -notmatch "^/vol/") {
                 # VSM relationship
-                msg ("Cutting over VSM source: " + $_.ODSTNODE + ":" + $_.ODSTPATH)
-                $odst = Get-Navol -Controller $dstold_node -Name $_.ODSTPATH
-                $ndst = Get-Navol -Controller $dstold_node -Name $_.ODSTPATH
-                
+                header ("Cutting over VSM source: " + $_.ODSTNODE + ":" + $_.ODSTPATH)
+                $src = $src_Node.Name + ":" + $_.SRCPATH
+                $odst = $dstold_Node.Name + ":" + $_.NDSTPATH 
+                $ndst = $dstnew_Node.Name + ":" + $_.NDSTPATH
+
+                # It would be easier to just deal with the middle controller in the cascase
+                # since it has state for both relationships.  However, in Revlon's case
+                # it's easier to deal with the source and new destination systems because they
+                # are less likely to timeout than the old destination (ie na30 is very slow)
+                $ostate = Get-NaSnapmirror -Controller $dstold_node -Location $src
+                $nstate = Get-NaSnapmirror -Controller $dstnew_node -Location $ndst
+                $ostatus = Get-NaSnapmirror -Controller $dstold_node -Location $src
+                $nstatus = Get-NaSnapmirror -Controller $dstnew_node -Location $ndst
+                Write-Host ($dstold_node.Name + " ostate.state: " + $ostate.State)
+                Write-Host ($dstnew_node.Name + " nstate.state: " + $nstate.State)
+                Write-Host ($dstold_node.Name + " ostate.status: " + $ostate.Status)
+                Write-Host ($dstnew_node.Name + " nstate.status: " + $nstate.Status)
+                Write-Host ($dstold_node.Name + " ostate.status: " + $ostate.LagTimeTS)
+                Write-Host ($dstnew_node.Name + " nstate.status: " + $nstate.LagTimeTS)
+                if ( $ostate.LagTimeTS -lt $nstate.LagTimeTS ) {
+                    Write-Host ("ostate LAG TIME is newer than nstate LAG TIME")
+                } elseif ( $ostate.LagTimeTS -gt $nstate.LagTimeTS ) {
+                    Write-Host ("ostate LAG TIME is older than nstate LAG TIME")
+                } elseif ( $ostate.LagTimeTS -eq $nstate.LagTimeTS ) {
+                    Write-Host ("ostate LAG TIME equals nstate LAG TIME")
+                    Write-Host ("Quiesce/break old relationship")
+                    Write-Host ("Get schedule from relationship and apply to new relationship")
+                    Write-Host ("Change source for new relationship")
+                    Write-Host ("Release on source for old relationship")
+                    Write-Host ("Delete base for old relationship on old destination")
+                } else {
+                    Write-Host ("Oh shit")
+                }
+                # Status is snapmirrored and state is idle: update second leg and cutover
+                #if ( () -and () ) {
+                #} 
+
             } elseif ($_.SRCPATH -match "^/vol/") {
                 # QSM relationship
-                msg ("Working with QSM source: " + $_.ODSTNODE + ":" + $_.ODSTPATH)
+                header ("Working with QSM source: " + $_.ODSTNODE + ":" + $_.ODSTPATH)
             }
         }
     }
@@ -138,4 +171,4 @@ switch ($mode) {
     }
 }
 
-stop-transcript
+Stop-Transcript
