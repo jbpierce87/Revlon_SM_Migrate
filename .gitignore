@@ -2,6 +2,10 @@
 # Vi Swap Files
 *.swp
 *.swo
+# Temp log files
+seed.txt
+update.txt
+cutover.txt
 # Mac Finder Crap
 .DS_STORE
 >>>>>>> 301ee72952a68c206c728dacd5efb9799ec31d34
