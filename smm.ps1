@@ -63,7 +63,7 @@ $csvobjects = Import-Csv -Path (resolve-path $csvfile).Path
 #$sources += ($csvobjects | foreach-object {$_.SRC}) | select -uniq
 #for ($i = 0; $i -le $sources.Length; $i++) {
 #    New-Variable -Name "srcStr$i" -Value $sources[$i]
-#    New-Variable -Name "srcNodeObj$i" -Value $sources[$i]
+#    New-Variable -Name "srcNode$i" -Value $sources[$i]
 #}
 
 ### Connect to our source, old destination, and new destination controllers
@@ -129,7 +129,7 @@ switch ($mode) {
                 # It would be easier to just deal with the middle controller in the cascase
                 # since it has state for both relationships.  However, in Revlon's case
                 # it's easier to deal with the source and new destination systems because they
-                # are less likely to timeout than the old destination (ie na30 is very slow)
+                # are less likely to timeout than the old destination (ie na30 is no bueno)
                 $ostate = Get-NaSnapmirror -Controller $dstold_node -Location $src
                 $nstate = Get-NaSnapmirror -Controller $dstnew_node -Location $ndst
                 $ostatus = Get-NaSnapmirror -Controller $dstold_node -Location $src
