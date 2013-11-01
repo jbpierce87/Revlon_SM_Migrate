@@ -6,6 +6,8 @@
 seed.txt
 update.txt
 cutover.txt
+release.txt
+status.txt
 # Mac Finder Crap
 .DS_STORE
 >>>>>>> 301ee72952a68c206c728dacd5efb9799ec31d34
