@@ -1,3 +1,3 @@
 SRCNODE,SRCPATH,ODSTNODE,ODSTPATH,NDSTNODE,NDSTPATH,NDSTAGGR
-usoxf-na07,vol5,usedn-na30,vol5_Mirror1,usedn-na50,vol5_Mirror1,aggr1_3t
-usoxf-na07,vol6,usedn-na30,vol6_Mirror1,usedn-na50,vol6_Mirror1,aggr2_3t
+usoxf-na07,vol5,usedn-na30,vol5_Mirror1,usedn-na50,vol5_Mirror1_mov,aggr1_3t
+usoxf-na07,vol6,usedn-na30,vol6_Mirror1,usedn-na50,vol6_Mirror1_mov,aggr2_3t
