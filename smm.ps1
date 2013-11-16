@@ -33,11 +33,18 @@
   .\smm.ps1 -mode cutover -csv input.csv -log cutoverlog.txt
   
   Fill in example doc  
+
+.PARAMETER csvfile
+
+.PARAMETER logfile
+
+.PARAMETER mode
+
 #>
 param (
-    [string]$csvfile = $(throw "-csv filename.csv is required"),
-    [string]$logfile = $(throw "-log logname.txt is required"),
-    [ValidateSet("seed","update","cutover","status","release","none")][string]$mode = "none",
+    [string]$csvfile = $(throw "-csvfile filename.csv is required"),
+    [string]$logfile = $(throw "-logfile logname.txt is required"),
+    [ValidateSet("seed","update","cutover","status","release","none")][string]$mode = "none"
 )
 
 # Import the ONTAP PS Module
@@ -66,12 +73,6 @@ $cred = new-object -typename system.management.automation.pscredential -argument
 # Slurp in CSV file with our input 
 # Input file format is: SRCNODE,SRCPATH,ODSTNODE,ODSTPATH,NDSTNODE,NDSTPATH,NDSTAGGR
 $csvobjects = Import-Csv -Path (resolve-path $csvfile).Path
-
-#$sources += ($csvobjects | foreach-object {$_.SRC}) | select -uniq
-#for ($i = 0; $i -le $sources.Length; $i++) {
-#    New-Variable -Name "srcStr$i" -Value $sources[$i]
-#    New-Variable -Name "srcNode$i" -Value $sources[$i]
-#}
 
 # Connect to our source, old destination, and new destination controllers
 $src_node = Connect-NaController $csvobjects[0].SRCNODE -Credential $cred -https
