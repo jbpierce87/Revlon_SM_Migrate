@@ -39,7 +39,6 @@
 .PARAMETER logfile
 
 .PARAMETER mode
-
 #>
 param (
     [string]$csvfile = $(throw "-csvfile filename.csv is required"),
@@ -58,11 +57,14 @@ Function header($message) {
     Write-Host "===================================================================================="
 }
 
+# Start a transcript file using the filename given with the -logfile parameter.
 $TranscriptFile = $logfile 
 Start-Transcript $TranscriptFile
 
 # User and password for NetApp controllers
 # Modifications required if the controllers all use different credentials
+# Alternatively, the cleartext credentials below could be removed and add-nacredential could be
+# ran on the host where the script will run from for each controller in the cascade.
 $ntapuser = "root"
 $ntappw = "AcmeL4b#"
 
@@ -74,7 +76,10 @@ $cred = new-object -typename system.management.automation.pscredential -argument
 # Input file format is: SRCNODE,SRCPATH,ODSTNODE,ODSTPATH,NDSTNODE,NDSTPATH,NDSTAGGR
 $csvobjects = Import-Csv -Path (resolve-path $csvfile).Path
 
-# Connect to our source, old destination, and new destination controllers
+# Connect to source, old destination, and new destination controllers.
+# Note that this is written such that it only work when all sources are on the same controller.
+# Handling multiple sources in the same input file would not be too difficult to code but was
+# not a requirement for Revlon's needs so I didn't code that in.
 $src_node = Connect-NaController $csvobjects[0].SRCNODE -Credential $cred -https
 $dstold_node = Connect-NaController $csvobjects[0].ODSTNODE -Credential $cred -https
 $dstnew_node = Connect-NaController $csvobjects[0].NDSTNODE -Credential $cred -https
@@ -106,6 +111,7 @@ switch ($mode) {
                 } else {
                     Write-Host ("Volume " + $src.Name + " not online.  Skipping!")
                 }
+
             # QSM relationship
             } elseif ($_.SRCPATH -match "^/vol/") {
                 header ("Seed QSM source: " + $_.ODSTNODE + ":" + $_.ODSTPATH)
@@ -142,6 +148,9 @@ switch ($mode) {
             }
             Get-NaSnapmirror -Controller $dstold_node -Location $src
             Get-NaSnapmirror -Controller $dstnew_node -Location $ndst
+            if ($_.SRCPATH -match "^/vol/") {
+                Get-NaSnapmirror -Controller $dstnew_node -Location $src
+            }
         }
     }
 
@@ -176,6 +185,7 @@ switch ($mode) {
                 } else {
                     Write-Host ($_ODSTNODE + ":" + $_.ODSTPATH + " is not a VSM destination or transfers to it are broken. Skipping!")
                 } 
+
             # QSM relationship
             } elseif ($_.SRCPATH -match "^/vol/") {
                 header ("Update QSM source: " + $odst + " -->> " + $ndst)
@@ -218,7 +228,7 @@ switch ($mode) {
             if ($_.SRCPATH -notmatch "^/vol/") {
                 header ("Cut over VSM source: " + $odst)
                 # It would be easier to just deal with the middle controller in the cascade
-                # since it has state for both relationships.  However, in Revlon's case
+                # since it has state for both relationships.  However, in our case
                 # it's easier to deal with the source and new destination systems because they
                 # are less likely to timeout than the old destination (ie na30 is pokey)
                 # Lag times are time/NTP dependent.  Make sure time is synced on src/odst/ndst systems.
@@ -250,10 +260,10 @@ switch ($mode) {
                 $olag = $('{0:N2}' -f $ostate.LagTimeTS.TotalHours)
                 $nlag = $('{0:N2}' -f $nstate.LagTimeTS.TotalHours)
 
+                # Equal lag times for a 2 hop VSM cascade mean we can cutover safely
                 if ( $olag -eq $nlag ) {
                     Write-Host ("** Lag Times Are Equal - Cutting Over **")
                     Write-Host ("Setting snapmirror schedules on new destination based on old destination") 
-                    # Get-NaSnapMirrorSchedule -Controller $dstold_node -Destination $odst | Set-NaSnapMirrorSchedule -Controller $dstnew_node -Destination $ndst
                     # Note: code below needs updates if preserving options like kbs=2000 is required.  It wasn't in my case so I didn't code it.
                     $schedule = Get-NaSnapMirrorSchedule -Controller $dstold_node -Destination $odst 
                     Set-NaSnapMirrorSchedule    -Controller $dstnew_node `
@@ -282,6 +292,8 @@ switch ($mode) {
                 $olag = $('{0:N2}' -f $ostate.LagTimeTS.TotalHours)
                 $nlag = $('{0:N2}' -f $nstate.LagTimeTS.TotalHours)
 
+                # If the lag on the second hop is higher, we need to update that leg before cutover.
+                # We'll block until the update completes.
                 if ( $olag -lt $nlag ) {
                     Write-Host ($src + " -->> " + $odst + " is more up to date than " + $odst + " -->> " + $ndst)
                     Invoke-NaSnapmirrorUpdate -Controller $dstnew_node -Source $odst -Destination $ndst
@@ -299,6 +311,7 @@ switch ($mode) {
                 $olag = $('{0:N2}' -f $ostate.LagTimeTS.TotalHours)
                 $nlag = $('{0:N2}' -f $nstate.LagTimeTS.TotalHours)
 
+                # For a QSM to VSM cascade, if the lag time on the QSM hop is less than the VSM hop, it's safe to cutover.
                 if ( $olag -gt $nlag ) {
                     Write-Host ("** VSM hop is more up to date than QSM hop - Cutting Over **")
                     Write-Host ("Setting snapmirror schedules on new destination based on old destination") 
@@ -358,7 +371,6 @@ switch ($mode) {
                 $vsmbase = (Get-NaSnapmirror -Controller $dstnew_node -Location $ndst).BaseSnapshot 
                 header ($dstnew_node.Name + " delete VSM base snap: " + $vsmbase + " on volume: " + $_.NDSTPATH)
                 Remove-NaSnapshot -Controller $dstnew_node -TargetName $_.NDSTPATH -Snapname $vsmbase -Confirm:$false
-                # Remove QSM snaps from ODST relationships
                 header ($dstnew_node.Name + " delete QSM base snaps " + $dstold_node.Name + "*" + " on volume: " + $_.NDSTPATH)
                 $snapwc = $dstold_node.Name + "*"
                 Get-NaSnapShot -Controller $dstnew_node -TargetName $_.NDSTPATH -Snapname $snapwc | Remove-NaSnapshot -Confirm:$false 
@@ -366,9 +378,9 @@ switch ($mode) {
         }
     }
 
-    # Default mode.  Need to fill out the help.
+    # Default mode.  Need to fill out the help functionality.
     "none" {
-        Write-Host "Help is required"
+        Write-Host "Help fucntionality to be completed"
         break
     }
 }
