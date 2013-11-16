@@ -1,4 +1,7 @@
+SRCNODE,SRCPATH,ODSTNODE,ODSTPATH,NDSTNODE,NDSTPATH,NDSTAGGR
 usoxf-na07,vol1,usedn-na30,vol1_Mirror1,usedn-na50,vol1_Mirror1,aggr1_3t
-usoxf-na07,vol2,usedn-na30,vol1_Mirror1,usedn-na50,vol1_Mirror1,aggr2_3t
+usoxf-na07,vol2,usedn-na30,vol2_Mirror1,usedn-na50,vol2_Mirror1,aggr2_3t
 usoxf-na07,/vol/vol3/qtree3,usedn-na30,/vol/vol3_Mirror1/qtree3,usedn-na50,vol3_Mirror1,aggr3_3t
-usoxf-na07,/vol/vol4/qtree4,usedn-na30,/vol/vol4i_Mirror1/qtree4,usedn-na50,vol4_Mirror1,aggr1_3t
+usoxf-na07,/vol/vol4/qtree4,usedn-na30,/vol/vol4_Mirror1/qtree4,usedn-na50,vol4_Mirror1,aggr1_3t
+usoxf-na07,vol5,usedn-na30,vol5_Mirror1,usedn-na50,vol5_Mirror1,aggr1_3t
+usoxf-na07,vol6,usedn-na30,vol6_Mirror1,usedn-na50,vol6_Mirror1_mir,aggr2_3t
